@@ -2,13 +2,15 @@ const mazeContainer = document.getElementById("maze");
 const size = 15;
 let playerPosition = { x: 0, y: 0 };
 let exitPosition = { x: size - 1, y: size - 1 };
-let enemyPosition = { x: size - 1, y: size - 2 };
+let enemyPosition = { x: size - 1, y: size - 2 }; // Posición diferente a la salida
 let maze = [];
-let enemyInterval;
+let enemyInterval; // Variable para controlar el intervalo
 
 function generateMaze() {
+    // Limpiar intervalo anterior
     if (enemyInterval) clearInterval(enemyInterval);
     
+    // Reiniciar posiciones
     playerPosition = { x: 0, y: 0 };
     exitPosition = { x: size - 1, y: size - 1 };
     enemyPosition = { x: size - 1, y: size - 2 };
@@ -33,17 +35,13 @@ function generateMaze() {
     ensurePathToExit();
     openRandomWalls(0.32);
     
-    // Asegurar posiciones válidas
-    maze[0][0] = 0;
-    maze[exitPosition.y][exitPosition.x] = 0;
-    maze[enemyPosition.y][enemyPosition.x] = 0;
+    // Asegurar posiciones clave
+    maze[0][0] = 0; // Posición inicial
+    maze[exitPosition.y][exitPosition.x] = 0; // Salida
+    maze[enemyPosition.y][enemyPosition.x] = 0; // Enemigo
     
     renderMaze();
     startEnemyMovement();
-    
-    // Mostrar/ocultar controles móviles
-    const mobileControls = document.getElementById("mobile-controls");
-    mobileControls.style.display = window.innerWidth <= 768 ? "grid" : "none";
 }
 
 function startEnemyMovement() {
@@ -55,11 +53,11 @@ function startEnemyMovement() {
         while (queue.length) {
             let { x, y, path } = queue.shift();
             if (x === playerPosition.x && y === playerPosition.y) {
-                if (path.length === 0) break;
-                enemyPosition = path[0];
+                if (path.length === 0) break; // Ya está en la posición
+                let nextMove = path[0];
+                enemyPosition = nextMove;
                 renderMaze();
-                
-                // Verificar colisión después de mover al enemigo
+                // Verificar colisión después de mover
                 if (playerPosition.x === enemyPosition.x && playerPosition.y === enemyPosition.y) {
                     clearInterval(enemyInterval);
                     alert("¡El enemigo te atrapó!");
@@ -68,6 +66,7 @@ function startEnemyMovement() {
                 return;
             }
 
+            // Movimientos posibles
             const directions = [
                 {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1}
             ];
@@ -81,8 +80,9 @@ function startEnemyMovement() {
                 }
             }
         }
-    }, 232);
+    }, 226);
 }
+
 
 function openRandomWalls(probability) {
     for (let y = 0; y < size; y++) {
@@ -96,27 +96,23 @@ function openRandomWalls(probability) {
 
 function ensurePathToExit() {
     const visited = Array.from({ length: size }, () => Array(size).fill(false));
-    
     function dfs(x, y) {
         if (x === exitPosition.x && y === exitPosition.y) return true;
         visited[y][x] = true;
-        
         const directions = [
             { x: 0, y: 1 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: -1, y: 0 }
         ];
-        
         for (const dir of directions) {
             const nx = x + dir.x, ny = y + dir.y;
-            if (nx >= 0 && nx < size && ny >= 0 && ny < size && 
-                maze[ny][nx] === 0 && !visited[ny][nx] && dfs(nx, ny)) {
-                return true;
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size && maze[ny][nx] === 0 && !visited[ny][nx]) {
+                if (dfs(nx, ny)) return true;
             }
         }
         return false;
     }
 
     if (!dfs(0, 0)) {
-        maze[exitPosition.y][exitPosition.x] = 0;
+        maze[exitPosition.y][exitPosition.x] = 0; // Abrir la salida si no hay camino
     }
 }
 
@@ -130,7 +126,7 @@ function getValidNeighbors({ x, y }) {
 
 function renderMaze() {
     mazeContainer.innerHTML = "";
-    mazeContainer.style.gridTemplateColumns = `repeat(${size}, minmax(20px, 40px))`;
+    mazeContainer.style.gridTemplateColumns = `repeat(${size}, 40px)`;
     
     maze.forEach((row, y) => {
         row.forEach((cell, x) => {
@@ -138,73 +134,24 @@ function renderMaze() {
             div.className = `cell ${cell ? 'wall' : 'path'} 
                 ${x === playerPosition.x && y === playerPosition.y ? 'player' : ''}
                 ${x === exitPosition.x && y === exitPosition.y ? 'exit' : ''}
-                ${x === enemyPosition.x && y === enemyPosition.y ? 'enemy' : ''}`;
+                ${x === enemyPosition.x && y === enemyPosition.y ? 'enemy' : ''}`; // Clase enemy
             mazeContainer.appendChild(div);
         });
     });
 }
-
-function movePlayer(direction) {
-    const moves = {
-        up: { x: 0, y: -1 },
-        down: { x: 0, y: 1 },
-        left: { x: -1, y: 0 },
-        right: { x: 1, y: 0 }
-    };
-    
-    const move = moves[direction];
+document.addEventListener("keydown", (e) => {
+    const moves = { ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 }, ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 } };
+    const move = moves[e.key];
     if (!move) return;
-    
     const newX = playerPosition.x + move.x;
     const newY = playerPosition.y + move.y;
-    
     if (newX >= 0 && newX < size && newY >= 0 && newY < size && maze[newY][newX] === 0) {
         playerPosition = { x: newX, y: newY };
         renderMaze();
-        
-        // Verificar colisión con el enemigo después de mover
-        if (playerPosition.x === enemyPosition.x && playerPosition.y === enemyPosition.y) {
-            clearInterval(enemyInterval);
-            alert("¡El enemigo te atrapó!");
-            generateMaze();
-            return; // Salir inmediatamente
-        }
-        
-        // Verificar si llegó a la salida
         if (playerPosition.x === exitPosition.x && playerPosition.y === exitPosition.y) {
-            setTimeout(() => {
-                alert("¡Has escapado!");
-                generateMaze();
-            }, 100);
+            setTimeout(() => { alert("¡Has escapado!"); playerPosition = { x: 0, y: 0 }; generateMaze(); }, 100);
         }
     }
-}
-
-// Event listeners
-document.addEventListener("keydown", (e) => {
-    const keyMap = {
-        ArrowUp: 'up',
-        ArrowDown: 'down',
-        ArrowLeft: 'left',
-        ArrowRight: 'right'
-    };
-    if (keyMap[e.key]) movePlayer(keyMap[e.key]);
 });
 
-document.querySelectorAll('.mobile-btn').forEach(button => {
-    button.addEventListener('click', (e) => movePlayer(e.target.id));
-    button.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        movePlayer(e.target.id);
-    });
-});
-
-// Inicialización
 generateMaze();
-
-// Ajustar controles al cambiar tamaño de ventana
-window.addEventListener("resize", () => {
-    const mobileControls = document.getElementById("mobile-controls");
-    mobileControls.style.display = window.innerWidth <= 768 ? "grid" : "none";
-    renderMaze();
-});
